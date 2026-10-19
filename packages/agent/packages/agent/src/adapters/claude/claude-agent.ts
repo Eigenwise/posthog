@@ -1821,6 +1821,18 @@ export class ClaudeAcpAgent extends BaseAcpAgent {
             ) {
               session.backgroundTurnActive = true;
             }
+            // The SDK can echo a task notification before the previous
+            // background result, so that result clears the flag first. Model
+            // output with no tracked turn still means a background turn runs.
+            if (
+              message.type === "assistant" &&
+              message.parent_tool_use_id === null &&
+              !session.cancelled &&
+              !session.activeTurn &&
+              !session.turnQueue.some((turn) => !turn.settled)
+            ) {
+              session.backgroundTurnActive = true;
+            }
             // A user echo promotes its queued turn (handing off any still-
             // active one first), then drops from the feed. Runs before the
             // cancelled guard so a turn enqueued after a cancel still starts.
@@ -3063,6 +3075,7 @@ export class ClaudeAcpAgent extends BaseAcpAgent {
         await new PostHogAPIClient(config).updateTaskRun(taskId, taskRunId, {
           status,
           ...(status === "failed" && message ? { error_message: message } : {}),
+          ...(status === "failed" ? { error_type: "agent_declined" } : {}),
         });
       } catch (error) {
         this.logger.error("finish tool failed to mark run terminal", error);
@@ -3546,11 +3559,25 @@ export class ClaudeAcpAgent extends BaseAcpAgent {
     try {
       if (isResume || resolvedModelId !== options.model) {
         startupStep = "model switch";
-        await this.awaitStartupControl(
-          startupStep,
-          this.session.query.setModel(resolvedModelId),
-          startupErrorData,
-        );
+        try {
+          await this.awaitStartupControl(
+            startupStep,
+            this.session.query.setModel(resolvedModelId),
+            startupErrorData,
+          );
+        } catch (modelSwitchError) {
+          startupLogger.warn("Session model switch failed; retrying once", {
+            ...startupErrorData,
+            modelId: resolvedModelId,
+            errorDetail: serializeError(modelSwitchError),
+          });
+          await new Promise<void>((resolve) => setTimeout(resolve, 1000));
+          await this.awaitStartupControl(
+            startupStep,
+            this.session.query.setModel(resolvedModelId),
+            startupErrorData,
+          );
+        }
       }
 
       // Keep thinking enabled by default for effort-capable models (see
