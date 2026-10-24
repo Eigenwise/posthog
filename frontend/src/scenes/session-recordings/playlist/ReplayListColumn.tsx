@@ -5,6 +5,7 @@ import { IconSparkles } from '@posthog/icons'
 import { LemonBadge, LemonSegmentedButton, Spinner } from '@posthog/lemon-ui'
 
 import { colonDelimitedDuration } from 'lib/utils/durations'
+import { playerSettingsLogic } from 'scenes/session-recordings/player/playerSettingsLogic'
 import { SessionRecordingPlayerLogicProps } from 'scenes/session-recordings/player/sessionRecordingPlayerLogic'
 
 import { SessionRecordingType } from '~/types'
@@ -15,6 +16,8 @@ import { RecordingMoments } from 'products/replay_vision/frontend/components/Rec
 import { observationsDockLogic } from 'products/replay_vision/frontend/logics/observationsDockLogic'
 import { momentCount } from 'products/replay_vision/frontend/utils/recordingTimeline'
 
+import { PersonFeedSegment } from './PersonFeedSegment'
+import { isFeedReplayLayout, isNewReplayLayout } from './replayLayout'
 import { ReplayListSegment, replayListColumnLogic } from './replayListColumnLogic'
 import { sessionRecordingsPlaylistLogic } from './sessionRecordingsPlaylistLogic'
 import { usePlayerMounted } from './usePlayerMounted'
@@ -68,11 +71,13 @@ function ReplayListColumnView({
     const logic = replayListColumnLogic({ logicKey })
     const { effectiveSegmentFor } = useValues(logic)
     const { setSegment } = useActions(logic)
+    const { replayLayout } = useValues(playerSettingsLogic)
 
     const playerLogicProps: SessionRecordingPlayerLogicProps | null = recording
         ? { playerKey: logicKey, sessionRecordingId: recording.id }
         : null
-    const segment = effectiveSegmentFor(picksMode, momentsAvailable)
+    const person = isNewReplayLayout(replayLayout) && recording?.person?.uuid ? recording.person : null
+    const segment = effectiveSegmentFor(picksMode, momentsAvailable, !!person)
 
     const options = [
         ...(picksList
@@ -112,6 +117,18 @@ function ReplayListColumnView({
               ]
             : []),
     ]
+
+    if (segment === 'person' && person && recording) {
+        return (
+            <PersonFeedSegment
+                key={person.uuid}
+                person={person}
+                currentRecordingId={recording.id}
+                feedCards={isFeedReplayLayout(replayLayout)}
+                onBack={() => setSegment('recordings')}
+            />
+        )
+    }
 
     return (
         <>

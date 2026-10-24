@@ -29,3 +29,7 @@ export function isNewReplayLayout(layout: ReplayLayout): boolean {
 export function playerUsesWatchLayout(layout: ReplayLayout, logicProps: { watchLayout?: boolean }): boolean {
     return isNewReplayLayout(layout) && !!logicProps.watchLayout
 }
+
+export function isFeedReplayLayout(layout: ReplayLayout): boolean {
+    return layout === 'youtube'
+}

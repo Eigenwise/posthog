@@ -1,5 +1,8 @@
 import { useValues } from 'kea'
 
+import { IconChevronRight } from '@posthog/icons'
+import { LemonButton } from '@posthog/lemon-ui'
+
 import { PropertyIcon } from 'lib/components/PropertyIcon/PropertyIcon'
 import { TZLabel } from 'lib/components/TZLabel'
 import { LemonSkeleton } from 'lib/lemon-ui/LemonSkeleton'
@@ -8,7 +11,10 @@ import { humanFriendlyDuration } from 'lib/utils/durations'
 import { PlayerMetaExperimentTags } from 'scenes/session-recordings/player/player-meta/PlayerMetaExperimentTags'
 import { PinToPlaylistButton } from 'scenes/session-recordings/player/player-meta/PlayerMetaLinks'
 import { playerMetaLogic } from 'scenes/session-recordings/player/player-meta/playerMetaLogic'
+import { playerSettingsLogic } from 'scenes/session-recordings/player/playerSettingsLogic'
 import { gatherIconProperties } from 'scenes/session-recordings/playlist/gatherIconProperties'
+import { isNewReplayLayout } from 'scenes/session-recordings/playlist/replayLayout'
+import { replayListColumnLogic } from 'scenes/session-recordings/playlist/replayListColumnLogic'
 import { sessionRecordingsListPropertiesLogic } from 'scenes/session-recordings/playlist/sessionRecordingsListPropertiesLogic'
 
 import { PersonIcon } from 'products/persons/frontend/components/PersonDisplay'
@@ -20,6 +26,7 @@ export function RecordingTitleBlock(): JSX.Element {
     const { logicProps, sessionPlayerMetaData } = useValues(sessionRecordingPlayerLogic)
     const { sessionPerson, loading, startTime } = useValues(playerMetaLogic(logicProps))
     const { recordingPropertiesById } = useValues(sessionRecordingsListPropertiesLogic)
+    const { replayLayout } = useValues(playerSettingsLogic)
 
     if (loading) {
         return (
@@ -40,6 +47,10 @@ export function RecordingTitleBlock(): JSX.Element {
     const durationSeconds = sessionPlayerMetaData?.recording_duration
     const personName = sessionPerson ? asDisplay(sessionPerson) : 'Unknown user'
     const personHref = asLink(sessionPerson)
+    const feedColumn =
+        isNewReplayLayout(replayLayout) && sessionPerson?.uuid
+            ? replayListColumnLogic.findMounted({ logicKey: logicProps.playerKey })
+            : null
 
     return (
         <div className="flex items-start gap-3 min-w-0" data-attr="watch-panel-title">
@@ -54,17 +65,31 @@ export function RecordingTitleBlock(): JSX.Element {
                         personName
                     )}
                 </h2>
-                <div className="flex items-center gap-x-2 gap-y-0.5 flex-wrap text-xs text-secondary ph-no-capture">
-                    {durationSeconds !== undefined && <span>{humanFriendlyDuration(durationSeconds)}</span>}
-                    {startTime && <TZLabel time={startTime} showPopover={false} />}
-                    {iconProperties.map(({ property, value, label }) => (
-                        <span key={property} className="flex items-center gap-x-1">
-                            <PropertyIcon property={property} value={value} />
-                            <span>{label}</span>
-                        </span>
-                    ))}
-                    <PlayerMetaExperimentTags />
-                </div>
+                {feedColumn && (
+                    <div>
+                        <LemonButton
+                            size="xsmall"
+                            type="tertiary"
+                            sideIcon={<IconChevronRight />}
+                            onClick={() => feedColumn.actions.setSegment('person')}
+                            className="-ml-1"
+                            data-attr="watch-panel-more-from-person"
+                        >
+                            More from this person
+                        </LemonButton>
+                        <div className="flex items-center gap-x-2 gap-y-0.5 flex-wrap text-xs text-secondary ph-no-capture">
+                            {durationSeconds !== undefined && <span>{humanFriendlyDuration(durationSeconds)}</span>}
+                            {startTime && <TZLabel time={startTime} showPopover={false} />}
+                            {iconProperties.map(({ property, value, label }) => (
+                                <span key={property} className="flex items-center gap-x-1">
+                                    <PropertyIcon property={property} value={value} />
+                                    <span>{label}</span>
+                                </span>
+                            ))}
+                            <PlayerMetaExperimentTags />
+                        </div>
+                    </div>
+                )}
             </div>
             <div className="shrink-0">
                 <PinToPlaylistButton />

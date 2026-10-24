@@ -10,11 +10,8 @@ import { sessionRecordingSavedFiltersLogic } from 'scenes/session-recordings/fil
 import { RecordingUniversalFilters, SessionRecordingPlaylistType } from '~/types'
 
 import { playlistFiltersLogic } from './playlistFiltersLogic'
-import { stripSessionIds } from './playlistUtils'
-import { asUniversalFilters, sessionRecordingsPlaylistLogic } from './sessionRecordingsPlaylistLogic'
-
-const savedFilterName = (filter: SessionRecordingPlaylistType): string =>
-    filter.name || filter.derived_name || 'Unnamed'
+import { savedFilterName, savedFilterToFilters } from './savedFilterApply'
+import { sessionRecordingsPlaylistLogic } from './sessionRecordingsPlaylistLogic'
 
 export function SavedFilterSelect({
     setFilters,
@@ -35,11 +32,11 @@ export function SavedFilterSelect({
     }, [loadSavedFiltersIfNeeded])
 
     const apply = (filter: SessionRecordingPlaylistType): void => {
-        const universal = asUniversalFilters(filter.filters)
-        if (!universal) {
+        const next = savedFilterToFilters(filter)
+        if (!next) {
             return
         }
-        setFilters(stripSessionIds(universal))
+        setFilters(next)
         setAppliedSavedFilter(filter)
     }
 

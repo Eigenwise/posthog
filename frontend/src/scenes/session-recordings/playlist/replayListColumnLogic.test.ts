@@ -25,13 +25,15 @@ describe('replayListColumnLogic', () => {
         { chosen: 'moments', picksMode: 'picks', moments: true, expected: 'moments' },
         { chosen: 'moments', picksMode: 'picks', moments: false, expected: 'recordings' },
         { chosen: 'recordings', picksMode: 'picks', moments: true, expected: 'recordings' },
+        { chosen: 'person', picksMode: null, moments: false, person: true, expected: 'person' },
+        { chosen: 'person', picksMode: null, moments: false, person: false, expected: 'recordings' },
     ] as const)(
         'chosen $chosen with picks $picksMode and moments $moments shows $expected',
-        ({ chosen, picksMode, moments, expected }) => {
+        ({ chosen, picksMode, moments, expected, ...rest }) => {
             if (chosen) {
                 logic.actions.setSegment(chosen)
             }
-            expect(logic.values.effectiveSegmentFor(picksMode, moments)).toBe(expected)
+            expect(logic.values.effectiveSegmentFor(picksMode, moments, 'person' in rest && rest.person)).toBe(expected)
         }
     )
 
